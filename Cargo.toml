@@ -1,0 +1,14 @@
+[package]
+name = "logix"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+anyhow = "1.0"
+colorize = "0.1.0"
+tar = "0.4.44"
+xz2 = "0.1.7"
+flate2 = "1.1.0"
+zstd = "0.13.3"
