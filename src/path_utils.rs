@@ -23,21 +23,18 @@ fn decompress_logs<R: Read>(
     let mut extracted = Vec::new();
     for entry in archive.entries()? {
         let mut entry = entry?;
-        let file_name = entry
-            .path()?
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        if file_name.contains(".log") {
-            let log_path = PathBuf::from(format!("{dest_base_path}-{file_name}"));
-            println!(
-                "Extracting {file_name} from {} to {}",
-                arc_path.as_ref().to_string_lossy(),
-                log_path.to_string_lossy()
-            );
-            entry.unpack(&log_path)?;
-            extracted.push(log_path);
+        if let Some(file_name) = entry.path()?.file_name() {
+            let file_name = file_name.to_string_lossy().to_string();
+            if file_name.contains(".log") {
+                let log_path = PathBuf::from(format!("{dest_base_path}-{file_name}"));
+                println!(
+                    "Extracting {file_name} from {} to {}",
+                    arc_path.as_ref().to_string_lossy(),
+                    log_path.to_string_lossy()
+                );
+                entry.unpack(&log_path)?;
+                extracted.push(log_path);
+            }
         }
     }
     if !extracted.is_empty() {

@@ -9,8 +9,13 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "logix")]
-#[command(about = "Log indexer and searcher", long_about = None)]
+#[command(
+    name = "logix",
+    about = "Log indexer and searcher",
+    long_about = None,
+    disable_help_flag = true,
+    arg_required_else_help = true
+)]
 struct Cli {
     /// Path to log file
     #[arg(short, long)]
@@ -29,6 +34,12 @@ struct Cli {
     #[arg(short, long, default_value = "0")]
     context: usize,
 
+    #[arg(short, long, default_value = "0")]
+    head: usize,
+
+    #[arg(short, long, default_value = "0")]
+    tail: usize,
+
     /// List of words to search (prefix match)
     #[arg(required = true)]
     words: Vec<String>,
@@ -45,6 +56,8 @@ fn main() -> anyhow::Result<()> {
         args.print_debug,
         before,
         after,
+        args.head,
+        args.tail,
     )?;
 
     Ok(())

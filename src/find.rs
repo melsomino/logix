@@ -2,6 +2,7 @@ use crate::build;
 use crate::index::IxReader;
 use crate::path_utils::resolve_log_files;
 use colorize::AnsiColor;
+use std::collections::VecDeque;
 use std::path::PathBuf;
 
 pub fn query(
@@ -10,6 +11,8 @@ pub fn query(
     print_debug: bool,
     before: usize,
     after: usize,
+    head: usize,
+    tail: usize,
 ) -> anyhow::Result<()> {
     let log_paths = resolve_log_files(vec![path])?;
     let print_header = log_paths.len() > 1;
@@ -25,43 +28,78 @@ pub fn query(
             println!();
         }
         build::check_index(log_path.clone())?;
-        find_matches(log_path, query, print_debug, before, after)?;
+        query_file(log_path, query, print_debug, before, after, head, tail)?;
     }
     Ok(())
 }
 
-fn find_matches(
+fn query_file(
     log_path: PathBuf,
     query: &str,
     print_debug: bool,
     before: usize,
     after: usize,
+    head: usize,
+    tail: usize,
 ) -> anyhow::Result<()> {
     let ix = IxReader::new(log_path)?;
     if print_debug {
         ix.print_debug();
     }
     let (mut lines, words) = ix.find_matches(query)?;
+    let mut tail_lines = VecDeque::new();
     if print_debug {
         lines.print_debug();
     }
-    let mut is_first = true;
+    let mut show_separator = true;
+    let mut processed = 0;
+    let head_requested = head > 0;
+    let tail_requested = tail > 0;
     while let Some(line_offset) = lines.next()? {
-        let (before, line, after) = ix.read_log_line(line_offset, before, after)?;
-        if !before.is_empty() || !after.is_empty() {
-            if is_first {
-                is_first = false;
-            } else {
-                println!("--");
+        if head_requested && processed < head || !tail_requested {
+            print_line(&ix, line_offset, &words, before, after, &mut show_separator)?;
+        }
+        if tail_requested && (!head_requested || processed >= head) {
+            tail_lines.push_back(line_offset);
+            if tail_lines.len() > tail {
+                tail_lines.pop_front();
             }
         }
-        for line in before {
-            println!("{}", line);
+        processed += 1;
+        if !tail_requested && head_requested && processed >= head {
+            break;
         }
-        println!("{}", highlight_words(line.as_str(), &words));
-        for line in after {
-            println!("{}", line);
+    }
+    for line_offset in tail_lines {
+        print_line(&ix, line_offset, &words, before, after, &mut show_separator)?;
+    }
+    Ok(())
+}
+
+fn print_line(
+    ix: &IxReader,
+    line_offset: usize,
+    highlight_words: &[String],
+    before: usize,
+    after: usize,
+    show_separator: &mut bool,
+) -> anyhow::Result<()> {
+    let (before, line, after) = ix.read_log_line(line_offset, before, after)?;
+    if !before.is_empty() || !after.is_empty() {
+        if *show_separator {
+            println!("--");
+            *show_separator = false;
         }
+    }
+    for line in before {
+        println!("{}", line);
+    }
+    println!(
+        "{}",
+        crate::find::highlight_words(line.as_str(), &highlight_words)
+    );
+    for line in after {
+        println!("{}", line);
     }
     Ok(())
 }
