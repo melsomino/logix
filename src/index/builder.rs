@@ -1,67 +1,54 @@
-use serde::{Deserialize, Serialize};
-use std::io::{Cursor, Write};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct IxTokenBuilder {
-    pub text: String,
-    pub occurrences: Vec<usize>,
-}
+use crate::index::header_section::IxHeaderSection;
+use crate::index::lines_section::IxLinesSection;
+use crate::index::words_section::{IxWord, IxWordsSection};
+use std::io::{Seek, Write};
 
 pub struct IxBuilder {
-    pub tokens: Vec<IxTokenBuilder>,
+    pub words_section: IxWordsSection,
+    pub lines_sections: Vec<IxLinesSection>,
 }
 
 impl IxBuilder {
     pub fn new() -> Self {
-        Self { tokens: Vec::new() }
+        Self {
+            words_section: IxWordsSection::new(),
+            lines_sections: Vec::new(),
+        }
     }
-    pub(crate) fn add_token(&mut self, text: String, line_offset: usize) {
-        match self.tokens.binary_search_by_key(&&text, |x| &x.text) {
+
+    pub(crate) fn add_word(&mut self, text: String, line_offset: usize) {
+        match self
+            .words_section
+            .words
+            .binary_search_by_key(&&text, |x| &x.text)
+        {
             Ok(index) => {
-                self.tokens[index].occurrences.push(line_offset);
+                self.lines_sections[index].add_line_offset(line_offset);
             }
-            Err(index) => self.tokens.insert(
-                index,
-                IxTokenBuilder {
-                    text,
-                    occurrences: vec![line_offset],
-                },
-            ),
+            Err(index) => {
+                self.words_section.words.insert(index, IxWord::new(text, 0));
+                let mut lines_section = IxLinesSection::new();
+                lines_section.add_line_offset(line_offset);
+                self.lines_sections.insert(index, IxLinesSection::new());
+            }
         }
     }
 
-    pub(crate) fn write<W: Write>(&self, writer: &mut W) -> anyhow::Result<()> {
-        let mut occurrences_section_offsets = Vec::new();
-        let mut pos = 0;
-        for token in &self.tokens {
-            let mut buf = vec![0u8; token.occurrences.len() * 5];
-            let mut offset = 0;
-            for line_offset in &token.occurrences {
-                buf[offset..offset + 5].copy_from_slice(&line_offset.to_le_bytes()[0..5]);
-                offset += 5;
-            }
-            let compressed_buf = zstd::encode_all(buf.as_slice(), zstd::DEFAULT_COMPRESSION_LEVEL)?;
-            writer.write(&compressed_buf.len().to_be_bytes().as_ref())?;
-            writer.write(&compressed_buf)?;
-            writer.write(&0usize.to_be_bytes().as_ref())?;
-            occurrences_section_offsets.push(pos);
-            pos += 8 + compressed_buf.len() + 8;
+    pub fn write<W: Write + Seek>(&mut self, writer: &mut W) -> anyhow::Result<()> {
+        let start_position = writer.stream_position()?;
+        let mut header_section = IxHeaderSection::new();
+        let mut pos = header_section.write(writer)?;
+        let words_mut = self.words_section.words.iter_mut();
+        for (word, lines_section) in words_mut.zip(self.lines_sections.iter_mut()) {
+            word.lines_section_offset = pos;
+            pos += lines_section.write(writer)?;
         }
-
-        let mut buf = Vec::new();
-        let mut buf_writer = Cursor::new(&mut buf);
-        buf_writer.write(self.tokens.len().to_be_bytes().as_ref())?;
-        for (i, token) in self.tokens.iter().enumerate() {
-            let text_bytes = token.text.as_bytes();
-            buf_writer.write(&[text_bytes.len() as u8])?;
-            buf_writer.write(text_bytes)?;
-            buf_writer.write(&occurrences_section_offsets[i].to_be_bytes())?;
-        }
-        let compressed_buf = zstd::encode_all(buf.as_slice(), zstd::DEFAULT_COMPRESSION_LEVEL)?;
-        writer.write(&compressed_buf.len().to_be_bytes().as_ref())?;
-        writer.write(&compressed_buf)?;
-        writer.write(&pos.to_be_bytes().as_ref())?;
-
+        header_section.words_section_offset = pos;
+        self.words_section.write(writer)?;
+        let end_position = writer.stream_position()?;
+        writer.seek(std::io::SeekFrom::Start(start_position))?;
+        header_section.write(writer)?;
+        writer.seek(std::io::SeekFrom::Start(end_position))?;
         Ok(())
     }
 }

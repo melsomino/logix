@@ -1,72 +1,53 @@
-mod all_tokens;
-mod any_token;
-mod token;
+mod all;
+mod any;
+mod word;
 
-use crate::index::reader::{IxReader, IxToken};
-pub use all_tokens::AllTokensLinesReader;
-pub use any_token::AnyTokenLinesReader;
-pub use token::TokenLinesReader;
+use crate::index::reader::IxReader;
+use crate::index::words_section::IxWord;
+pub use all::AllLinesReader;
+pub use any::AnyLinesReader;
+pub use word::WordLinesReader;
 
 pub enum LinesReader {
-    SingleToken(TokenLinesReader),
-    AnyToken(AnyTokenLinesReader),
-    AllTokens(AllTokensLinesReader),
+    Word(WordLinesReader),
+    Any(AnyLinesReader),
+    All(AllLinesReader),
 }
 
 impl LinesReader {
-    pub fn token(ix: &IxReader, token: &IxToken) -> anyhow::Result<Self> {
-        Ok(Self::SingleToken(TokenLinesReader::new(ix, token)?))
+    pub fn with_word(ix: &IxReader, word: &IxWord) -> anyhow::Result<Self> {
+        Ok(Self::Word(WordLinesReader::new(ix, word)?))
     }
 
-    pub fn any(mut readers: Vec<Self>) -> anyhow::Result<Self> {
-        Ok(if readers.len() == 1 {
-            readers.pop().unwrap()
-        } else {
-            Self::AnyToken(AnyTokenLinesReader::new(readers)?)
+    pub fn with_any(mut readers: Vec<Self>) -> anyhow::Result<Option<Self>> {
+        Ok(match readers.len() {
+            0 => None,
+            1 => readers.pop(),
+            _ => Some(Self::Any(AnyLinesReader::new(readers)?)),
         })
     }
 
-    pub fn all(mut readers: Vec<Self>) -> anyhow::Result<Self> {
-        Ok(if readers.len() == 1 {
-            readers.pop().unwrap()
-        } else {
-            Self::AllTokens(AllTokensLinesReader::new(readers)?)
+    pub fn with_all(mut readers: Vec<Self>) -> anyhow::Result<Option<Self>> {
+        Ok(match readers.len() {
+            0 => None,
+            1 => readers.pop(),
+            _ => Some(Self::All(AllLinesReader::new(readers)?)),
         })
     }
 
     pub fn next(&mut self) -> anyhow::Result<Option<usize>> {
         match self {
-            Self::SingleToken(reader) => reader.next(),
-            Self::AnyToken(reader) => reader.next(),
-            Self::AllTokens(reader) => reader.next(),
+            Self::Word(reader) => reader.next(),
+            Self::Any(reader) => reader.next(),
+            Self::All(reader) => reader.next(),
         }
     }
 
-    pub fn print_debug(&self) {
-        self.internal_print_debug(0);
-    }
-
-    fn internal_print_debug(&self, indent: usize) {
-        let ident_prefix = "  ".repeat(indent);
+    pub fn print_debug(&self, indent: usize) {
         match self {
-            LinesReader::SingleToken(reader) => {
-                println!(
-                    "{ident_prefix}{}: {}",
-                    reader.token.text, reader.token.occurrences_offset
-                );
-            }
-            LinesReader::AnyToken(readers) => {
-                println!("{ident_prefix}Any:");
-                for reader in &readers.readers {
-                    reader.internal_print_debug(indent + 1);
-                }
-            }
-            LinesReader::AllTokens(readers) => {
-                println!("{ident_prefix}All:");
-                for reader in &readers.readers {
-                    reader.internal_print_debug(indent + 1);
-                }
-            }
+            LinesReader::Word(reader) => reader.print_debug(indent),
+            LinesReader::Any(reader) => reader.print_debug(indent),
+            LinesReader::All(reader) => reader.print_debug(indent),
         }
     }
 }

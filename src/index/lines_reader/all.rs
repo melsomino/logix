@@ -1,11 +1,11 @@
 use crate::index::lines_reader::LinesReader;
 
-pub struct AllTokensLinesReader {
-    pub(crate) readers: Vec<LinesReader>,
+pub struct AllLinesReader {
+    readers: Vec<LinesReader>,
     current: Vec<usize>,
 }
 
-impl AllTokensLinesReader {
+impl AllLinesReader {
     pub fn new(mut readers: Vec<LinesReader>) -> anyhow::Result<Self> {
         let mut current = vec![0; readers.len()];
         Self::read_all_next(&mut current, &mut readers)?;
@@ -51,6 +51,13 @@ impl AllTokensLinesReader {
                     }
                 }
             }
+        }
+    }
+
+    pub fn print_debug(&self, indent: usize) {
+        println!("{}All:", "  ".repeat(indent));
+        for reader in &self.readers {
+            reader.print_debug(indent + 1);
         }
     }
 }
