@@ -16,7 +16,7 @@ impl IxBuilder {
         }
     }
 
-    pub(crate) fn add_word(&mut self, text: String, line_offset: usize) {
+    pub(crate) fn add_word(&mut self, text: String, line_offset: u64) {
         match self
             .words_section
             .words
@@ -37,7 +37,7 @@ impl IxBuilder {
     pub fn write<W: Write + Seek>(&mut self, writer: &mut W) -> anyhow::Result<()> {
         let start_position = writer.stream_position()?;
         let mut header_section = IxHeaderSection::new();
-        let mut pos = header_section.write(writer)?;
+        let mut pos = start_position + header_section.write(writer)?;
         let words_mut = self.words_section.words.iter_mut();
         for (word, lines_section) in words_mut.zip(self.lines_sections.iter_mut()) {
             word.lines_section_offset = pos;

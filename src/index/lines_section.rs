@@ -2,7 +2,7 @@ use crate::index::{ReadEx, WriteEx};
 use std::io::{Read, Write};
 
 pub struct IxLinesSection {
-    pub next_section_offset: usize,
+    pub next_section_offset: u64,
     pub line_offsets_buf: Vec<u8>,
 }
 
@@ -14,7 +14,7 @@ impl IxLinesSection {
         }
     }
 
-    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<usize> {
+    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<u64> {
         writer.write_u64_be(self.next_section_offset)?;
         Ok(8 + writer.write_compressed(&self.line_offsets_buf)?)
     }
@@ -28,9 +28,9 @@ impl IxLinesSection {
         })
     }
 
-    pub fn add_line_offset(&mut self, offset: usize) {
+    pub fn add_line_offset(&mut self, offset: u64) {
         let mut offset_buf = [0u8; 5];
-        offset_buf.copy_from_slice(&(offset as u64).to_le_bytes()[0..5]);
+        offset_buf.copy_from_slice(&offset.to_le_bytes()[0..5]);
         self.line_offsets_buf.extend(&offset_buf);
     }
 

@@ -36,11 +36,11 @@ impl IxReader {
 
     pub fn read_log_line(
         &self,
-        line_offset: usize,
+        line_offset: u64,
         before: usize,
         after: usize,
     ) -> anyhow::Result<(Vec<String>, String, Vec<String>)> {
-        read_line_with_context(&self.log_path, line_offset as u64, before, after)
+        read_line_with_context(&self.log_path, line_offset, before, after)
     }
 
     pub fn query(&self, query: &Query) -> anyhow::Result<Option<LinesReader>> {

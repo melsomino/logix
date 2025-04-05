@@ -20,13 +20,13 @@ impl WordLinesReader {
         })
     }
 
-    pub fn next(&mut self) -> anyhow::Result<Option<usize>> {
+    pub fn next(&mut self) -> anyhow::Result<Option<u64>> {
         if self.buf_offset >= self.lines_section.line_offsets_buf.len() {
             return Ok(None);
         }
         let offset = self.lines_section.get_line_offset(self.buf_offset);
         self.buf_offset += 5;
-        Ok(Some(offset as usize))
+        Ok(Some(offset))
     }
 
     pub(crate) fn print_debug(&self, indent: usize) {

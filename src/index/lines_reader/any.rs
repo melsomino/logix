@@ -4,7 +4,7 @@ use std::collections::BinaryHeap;
 
 pub struct AnyLinesReader {
     pub(crate) readers: Vec<LinesReader>,
-    heap: BinaryHeap<Reverse<(usize, usize)>>, // (offset, reader_index)
+    heap: BinaryHeap<Reverse<(u64, usize)>>, // (offset, reader_index)
 }
 
 impl AnyLinesReader {
@@ -20,7 +20,7 @@ impl AnyLinesReader {
         Ok(Self { readers, heap })
     }
 
-    pub fn next(&mut self) -> anyhow::Result<Option<usize>> {
+    pub fn next(&mut self) -> anyhow::Result<Option<u64>> {
         if let Some(Reverse((offset, idx))) = self.heap.pop() {
             if let Some(next_offset) = self.readers[idx].next()? {
                 self.heap.push(Reverse((next_offset, idx)));

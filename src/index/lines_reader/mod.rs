@@ -35,7 +35,7 @@ impl LinesReader {
         })
     }
 
-    pub fn next(&mut self) -> anyhow::Result<Option<usize>> {
+    pub fn next(&mut self) -> anyhow::Result<Option<u64>> {
         match self {
             Self::Word(reader) => reader.next(),
             Self::Any(reader) => reader.next(),

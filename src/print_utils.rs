@@ -3,7 +3,7 @@ use colorize::AnsiColor;
 
 pub fn print_line(
     ix: &IxReader,
-    line_offset: usize,
+    line_offset: u64,
     highlight_words: &[String],
     before: usize,
     after: usize,

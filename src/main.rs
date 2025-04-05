@@ -126,10 +126,10 @@ pub fn check_index(log_path: PathBuf) -> anyhow::Result<()> {
     }
 
     let log_file = File::open(&log_path)?;
-    let log_size = log_file.metadata()?.len() as usize;
+    let log_size = log_file.metadata()?.len();
     let mut log_reader = BufReader::new(log_file);
     let mut ix_builder = IxBuilder::new();
-    let mut line_offset = 0usize;
+    let mut line_offset = 0u64;
     let mut last_percent = 0;
     loop {
         let percent = line_offset * 100 / log_size;
@@ -139,7 +139,7 @@ pub fn check_index(log_path: PathBuf) -> anyhow::Result<()> {
             last_percent = percent;
         }
         let mut line: String = String::new();
-        let len = log_reader.read_line(&mut line)?;
+        let len = log_reader.read_line(&mut line)? as u64;
         if len == 0 {
             break;
         };

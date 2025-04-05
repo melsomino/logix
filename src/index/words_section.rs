@@ -3,11 +3,11 @@ use std::io::{Cursor, Read, Write};
 
 pub struct IxWord {
     pub text: String,
-    pub lines_section_offset: usize,
+    pub lines_section_offset: u64,
 }
 
 impl IxWord {
-    pub fn new(text: String, lines_section_offset: usize) -> IxWord {
+    pub fn new(text: String, lines_section_offset: u64) -> IxWord {
         Self {
             text,
             lines_section_offset,
@@ -24,10 +24,10 @@ impl IxWordsSection {
         Self { words: Vec::new() }
     }
 
-    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<usize> {
+    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<u64> {
         let mut buf = Vec::new();
         let mut buf_writer = Cursor::new(&mut buf);
-        buf_writer.write_u64_be(self.words.len())?;
+        buf_writer.write_u64_be(self.words.len() as u64)?;
         for word in &self.words {
             let text_bytes = word.text.as_bytes();
             buf_writer.write_u8(text_bytes.len() as u8)?;
@@ -40,11 +40,11 @@ impl IxWordsSection {
     pub fn read(reader: &mut impl Read) -> anyhow::Result<Self> {
         let mut buf = reader.read_compressed()?;
         let mut words_reader = Cursor::new(&mut buf);
-        let len = words_reader.read_u64_be()?;
+        let len = words_reader.read_u64_be()? as usize;
         let mut words = Vec::with_capacity(len);
         for _ in 0..len {
-            let text_len = words_reader.read_u8()?;
-            let mut text_bytes = vec![0u8; text_len as usize];
+            let text_len = words_reader.read_u8()? as usize;
+            let mut text_bytes = vec![0u8; text_len];
             words_reader.read_exact(&mut text_bytes)?;
             let text = String::from_utf8(text_bytes)?;
             let lines_section_offset = words_reader.read_u64_be()?;

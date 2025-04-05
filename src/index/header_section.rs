@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 
 pub struct IxHeaderSection {
     pub version: u16,
-    pub words_section_offset: usize,
+    pub words_section_offset: u64,
 }
 
 impl IxHeaderSection {
@@ -23,7 +23,7 @@ impl IxHeaderSection {
         })
     }
 
-    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<usize> {
+    pub fn write(&self, writer: &mut impl Write) -> anyhow::Result<u64> {
         writer.write_u16_be(self.version)?;
         writer.write_u64_be(self.words_section_offset)?;
         Ok(2 + 8)

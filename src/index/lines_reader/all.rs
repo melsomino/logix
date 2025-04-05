@@ -2,7 +2,7 @@ use crate::index::lines_reader::LinesReader;
 
 pub struct AllLinesReader {
     readers: Vec<LinesReader>,
-    current: Vec<usize>,
+    current: Vec<u64>,
 }
 
 impl AllLinesReader {
@@ -12,7 +12,7 @@ impl AllLinesReader {
         Ok(Self { readers, current })
     }
 
-    fn read_all_next(current: &mut Vec<usize>, readers: &mut [LinesReader]) -> anyhow::Result<()> {
+    fn read_all_next(current: &mut Vec<u64>, readers: &mut [LinesReader]) -> anyhow::Result<()> {
         for (i, reader) in readers.iter_mut().enumerate() {
             if let Some(offset) = reader.next()? {
                 current[i] = offset;
@@ -23,7 +23,7 @@ impl AllLinesReader {
         }
         Ok(())
     }
-    pub fn next(&mut self) -> anyhow::Result<Option<usize>> {
+    pub fn next(&mut self) -> anyhow::Result<Option<u64>> {
         if self.current.is_empty() {
             return Ok(None);
         }
