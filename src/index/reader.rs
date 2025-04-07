@@ -43,7 +43,7 @@ impl IxReader {
         read_line_with_context(&self.log_path, line_offset, before, after)
     }
 
-    pub fn query(&self, query: &Query) -> anyhow::Result<Option<LinesReader>> {
+    pub fn query(&self, query: &Query) -> anyhow::Result<LinesReader> {
         match query {
             Query::Word(word) => LinesReader::with_any(
                 self.words_section
@@ -55,13 +55,13 @@ impl IxReader {
             Query::Any(queries) => LinesReader::with_any(
                 queries
                     .into_iter()
-                    .filter_map(|x| self.query(x).transpose())
+                    .map(|x| self.query(x))
                     .collect::<Result<_, _>>()?,
             ),
             Query::All(queries) => LinesReader::with_all(
                 queries
                     .into_iter()
-                    .filter_map(|x| self.query(x).transpose())
+                    .map(|x| self.query(x))
                     .collect::<Result<_, _>>()?,
             ),
         }

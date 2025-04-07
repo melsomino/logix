@@ -9,6 +9,7 @@ pub use any::AnyLinesReader;
 pub use word::WordLinesReader;
 
 pub enum LinesReader {
+    Empty,
     Word(WordLinesReader),
     Any(AnyLinesReader),
     All(AllLinesReader),
@@ -19,19 +20,19 @@ impl LinesReader {
         Ok(Self::Word(WordLinesReader::new(ix, word)?))
     }
 
-    pub fn with_any(mut readers: Vec<Self>) -> anyhow::Result<Option<Self>> {
+    pub fn with_any(mut readers: Vec<Self>) -> anyhow::Result<Self> {
         Ok(match readers.len() {
-            0 => None,
-            1 => readers.pop(),
-            _ => Some(Self::Any(AnyLinesReader::new(readers)?)),
+            0 => Self::Empty,
+            1 => readers.pop().unwrap(),
+            _ => Self::Any(AnyLinesReader::new(readers)?),
         })
     }
 
-    pub fn with_all(mut readers: Vec<Self>) -> anyhow::Result<Option<Self>> {
+    pub fn with_all(mut readers: Vec<Self>) -> anyhow::Result<Self> {
         Ok(match readers.len() {
-            0 => None,
-            1 => readers.pop(),
-            _ => Some(Self::All(AllLinesReader::new(readers)?)),
+            0 => Self::Empty,
+            1 => readers.pop().unwrap(),
+            _ => Self::All(AllLinesReader::new(readers)?),
         })
     }
 
@@ -40,6 +41,7 @@ impl LinesReader {
             Self::Word(reader) => reader.next(),
             Self::Any(reader) => reader.next(),
             Self::All(reader) => reader.next(),
+            Self::Empty => Ok(None),
         }
     }
 
@@ -48,6 +50,7 @@ impl LinesReader {
             LinesReader::Word(reader) => reader.print_debug(indent),
             LinesReader::Any(reader) => reader.print_debug(indent),
             LinesReader::All(reader) => reader.print_debug(indent),
+            LinesReader::Empty => println!("{}Empty", "  ".repeat(indent)),
         }
     }
 }

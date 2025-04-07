@@ -84,9 +84,7 @@ fn run_on_file(args: &Cli, log_path: PathBuf) -> anyhow::Result<()> {
     if args.debug_print {
         ix.print_debug();
     }
-    let Some(mut lines) = ix.query(&query)? else {
-        return Ok(());
-    };
+    let mut lines = ix.query(&query)?;
     let before = args.before.max(args.context);
     let after = args.after.max(args.context);
     let words = query.get_words();
