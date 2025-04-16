@@ -1,11 +1,10 @@
 [package]
-name = "logix"
+name = "qx"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
-serde = { version = "1", features = ["derive"] }
 anyhow = "1.0"
 colorize = "0.1.0"
 tar = "0.4.44"
