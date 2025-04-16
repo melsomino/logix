@@ -1,4 +1,4 @@
-use crate::file_utils::read_line_with_context;
+use crate::file_utils::LogLine;
 use crate::index::header_section::IxHeaderSection;
 use crate::index::ix_path;
 use crate::index::lines_reader::LinesReader;
@@ -34,20 +34,21 @@ impl IxReader {
         }
     }
 
-    pub fn read_log_line(
+    pub fn read_log(
         &self,
         line_offset: u64,
         before: usize,
         after: usize,
-    ) -> anyhow::Result<(Vec<String>, String, Vec<String>)> {
-        read_line_with_context(&self.log_path, line_offset, before, after)
+        check_order: Option<&Query>,
+    ) -> anyhow::Result<Option<LogLine>> {
+        LogLine::read(&self.log_path, line_offset, before, after, check_order)
     }
 
-    pub fn query(&self, query: &Query) -> anyhow::Result<LinesReader> {
+    pub fn query(&self, query: &Query, whole_words: bool) -> anyhow::Result<LinesReader> {
         match query {
             Query::Word(word) => LinesReader::with_any(
                 self.words_section
-                    .get_prefixed(&word)
+                    .select_words(&word, whole_words)
                     .into_iter()
                     .map(|x| LinesReader::with_word(self, x))
                     .collect::<Result<_, _>>()?,
@@ -55,13 +56,13 @@ impl IxReader {
             Query::Any(queries) => LinesReader::with_any(
                 queries
                     .into_iter()
-                    .map(|x| self.query(x))
+                    .map(|x| self.query(x, whole_words))
                     .collect::<Result<_, _>>()?,
             ),
             Query::All(queries) => LinesReader::with_all(
                 queries
                     .into_iter()
-                    .map(|x| self.query(x))
+                    .map(|x| self.query(x, whole_words))
                     .collect::<Result<_, _>>()?,
             ),
         }

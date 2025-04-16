@@ -56,12 +56,24 @@ impl IxWordsSection {
         Ok(Self { words })
     }
 
-    pub fn get_prefixed(&self, prefix: &str) -> Vec<&IxWord> {
+    pub fn select_words(&self, prefix: &str, whole_words: bool) -> Vec<&IxWord> {
         let mut tokens = Vec::new();
-        let mut pos = self
-            .words
-            .binary_search_by_key(&prefix, |x| &x.text)
-            .unwrap_or_else(|pos| pos);
+        let mut pos = match self.words.binary_search_by_key(&prefix, |x| &x.text) {
+            Ok(pos) => {
+                if whole_words {
+                    return vec![&self.words[pos]];
+                } else {
+                    pos
+                }
+            }
+            Err(pos) => {
+                if whole_words {
+                    return vec![];
+                } else {
+                    pos
+                }
+            }
+        };
         let mut i = pos;
         while i > 0 && self.words[i - 1].text.starts_with(&prefix) {
             tokens.push(&self.words[i - 1]);

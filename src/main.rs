@@ -46,6 +46,15 @@ struct Cli {
     #[arg(short, long, default_value = "0")]
     tail: usize,
 
+    #[arg(short, long, default_value = "false")]
+    whole_words: bool,
+
+    #[arg(short, long, default_value = "false")]
+    order_important: bool,
+
+    #[arg(short, long, default_value = "false")]
+    force_reindex: bool,
+
     /// List of words to search (prefix match)
     #[arg(required = true)]
     words: Vec<String>,
@@ -70,7 +79,7 @@ fn run_on_path(args: &Cli) -> anyhow::Result<()> {
             println!("{}:", log_path.display());
             println!();
         }
-        check_index(log_path.clone())?;
+        check_index(log_path.clone(), args.force_reindex)?;
         run_on_file(args, log_path)?;
     }
     Ok(())
@@ -84,7 +93,7 @@ fn run_on_file(args: &Cli, log_path: PathBuf) -> anyhow::Result<()> {
     if args.debug_print {
         ix.print_debug();
     }
-    let mut lines = ix.query(&query)?;
+    let mut lines = ix.query(&query, args.whole_words)?;
     let before = args.before.max(args.context);
     let after = args.after.max(args.context);
     let words = query.get_words();
@@ -92,13 +101,30 @@ fn run_on_file(args: &Cli, log_path: PathBuf) -> anyhow::Result<()> {
     if args.debug_print {
         lines.print_debug(0);
     }
-    let mut show_separator = true;
+    let mut show_separator = false;
     let mut processed = 0;
     let head_requested = args.head > 0;
     let tail_requested = args.tail > 0;
+    let check_order = if args.order_important {
+        Some(&query)
+    } else {
+        None
+    };
     while let Some(line_offset) = lines.next()? {
+        let line = if check_order.is_none() {
+            None
+        } else if let Some(line) = ix.read_log(line_offset, before, after, check_order)? {
+            Some(line)
+        } else {
+            continue;
+        };
         if head_requested && processed < args.head || !tail_requested {
-            print_line(&ix, line_offset, &words, before, after, &mut show_separator)?;
+            let line = if let Some(line) = line {
+                line
+            } else {
+                ix.read_log(line_offset, before, after, None)?.unwrap()
+            };
+            print_line(line, &words, &mut show_separator)?;
         }
         if tail_requested && (!head_requested || processed >= args.head) {
             tail_lines.push_back(line_offset);
@@ -112,15 +138,21 @@ fn run_on_file(args: &Cli, log_path: PathBuf) -> anyhow::Result<()> {
         }
     }
     for line_offset in tail_lines {
-        print_line(&ix, line_offset, &words, before, after, &mut show_separator)?;
+        if let Some(line) = ix.read_log(line_offset, before, after, None)? {
+            print_line(line, &words, &mut show_separator)?;
+        }
     }
     Ok(())
 }
 
-pub fn check_index(log_path: PathBuf) -> anyhow::Result<()> {
+pub fn check_index(log_path: PathBuf, force_reindex: bool) -> anyhow::Result<()> {
     let ix_path = ix_path(log_path.clone())?;
     if ix_path.exists() {
-        return Ok(());
+        if force_reindex {
+            std::fs::remove_file(&ix_path)?;
+        } else {
+            return Ok(());
+        }
     }
 
     let log_file = File::open(&log_path)?;

@@ -39,6 +39,55 @@ impl Query {
         reduce(queries, Self::All)
     }
 
+    pub fn check_words_order(&self, words: &[String]) -> bool {
+        match self {
+            Self::Word(_) => true,
+            Self::Any(queries) => queries.iter().any(|query| query.check_words_order(words)),
+            Self::All(queries) => {
+                let mut prev_index = -1isize;
+                for query in queries {
+                    match query {
+                        Self::Word(word) => {
+                            if let Some(index) = words.iter().position(|w| w.starts_with(word)) {
+                                if (index as isize) < prev_index {
+                                    return false;
+                                }
+                                prev_index = index as isize;
+                            }
+                        }
+                        Self::Any(queries) => {
+                            let mut min_index = None;
+                            for query in queries {
+                                if let Self::Word(word) = query {
+                                    if let Some(index) = words.iter().position(|w| w == word) {
+                                        if let Some(min_index) = &mut min_index {
+                                            if index < *min_index {
+                                                *min_index = index;
+                                            }
+                                        } else {
+                                            min_index = Some(index);
+                                        }
+                                        if (index as isize) < prev_index {
+                                            return false;
+                                        }
+                                    }
+                                }
+                            }
+                            if let Some(index) = min_index {
+                                if (index as isize) < prev_index {
+                                    return false;
+                                }
+                                prev_index = index as isize;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                true
+            }
+        }
+    }
+
     pub fn get_words(&self) -> Vec<String> {
         let mut words = Vec::new();
         self.inner_get_words(&mut words);

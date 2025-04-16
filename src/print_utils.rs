@@ -1,30 +1,27 @@
-use crate::index::IxReader;
+use crate::file_utils::LogLine;
 use colorize::AnsiColor;
 
 pub fn print_line(
-    ix: &IxReader,
-    line_offset: u64,
+    line: LogLine,
     highlight_words: &[String],
-    before: usize,
-    after: usize,
     show_separator: &mut bool,
 ) -> anyhow::Result<()> {
-    let (before, line, after) = ix.read_log_line(line_offset, before, after)?;
-    if !before.is_empty() || !after.is_empty() {
+    if !line.before.is_empty() || !line.after.is_empty() {
         if *show_separator {
             println!("--");
-            *show_separator = false;
+        } else {
+            *show_separator = true;
         }
     }
-    for line in before {
-        println!("{}", line);
+    for line in line.before {
+        println!("{}", line.b_grey());
     }
     println!(
         "{}",
-        crate::print_utils::highlight_words(line.as_str(), &highlight_words)
+        crate::print_utils::highlight_words(line.line.as_str(), &highlight_words)
     );
-    for line in after {
-        println!("{}", line);
+    for line in line.after {
+        println!("{}", line.b_grey());
     }
     Ok(())
 }

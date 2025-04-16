@@ -29,7 +29,7 @@ impl IxBuilder {
                 self.words_section.words.insert(index, IxWord::new(text, 0));
                 let mut lines_section = IxLinesSection::new();
                 lines_section.add_line_offset(line_offset);
-                self.lines_sections.insert(index, IxLinesSection::new());
+                self.lines_sections.insert(index, lines_section);
             }
         }
     }

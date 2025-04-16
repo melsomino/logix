@@ -1,45 +1,50 @@
+use crate::query::{Query, parse_words};
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::path::Path;
 
-pub fn read_line_with_context(
-    path: impl AsRef<Path>,
-    offset: u64,
-    before: usize,
-    after: usize,
-) -> anyhow::Result<(Vec<String>, String, Vec<String>)> {
-    let file = std::fs::File::open(path)?;
-    let mut reader = BufReader::new(&file);
+pub struct LogLine {
+    pub line: String,
+    pub before: Vec<String>,
+    pub after: Vec<String>,
+}
 
-    // 1. Seek to the offset
-    reader.seek(SeekFrom::Start(offset))?;
+impl LogLine {
+    pub fn read(
+        path: impl AsRef<Path>,
+        offset: u64,
+        before: usize,
+        after: usize,
+        check_order: Option<&Query>,
+    ) -> anyhow::Result<Option<Self>> {
+        let file = std::fs::File::open(path)?;
+        let mut reader = BufReader::new(&file);
 
-    // 2. Read the target line
-    let mut target_line = String::new();
-    reader.read_line(&mut target_line)?;
-
-    // 3. Print N lines before
-    let lines_before = if before > 0 {
-        read_lines_before(&file, offset, before)?
-    } else {
-        Vec::new()
-    };
-    read_lines_before(&file, offset, before)?;
-
-    let mut lines_after = Vec::new();
-    // 5. Print M lines after
-    for _ in 0..after {
-        let mut line = String::new();
-        if reader.read_line(&mut line)? == 0 {
-            break;
+        reader.seek(SeekFrom::Start(offset))?;
+        let mut target_line = String::new();
+        reader.read_line(&mut target_line)?;
+        if let Some(query) = check_order {
+            if !query.check_words_order(&parse_words(&target_line)) {
+                return Ok(None);
+            }
         }
-        lines_after.push(line.trim_end().to_string());
-    }
 
-    Ok((
-        lines_before,
-        target_line.trim_end().to_string(),
-        lines_after,
-    ))
+        let lines_before = read_lines_before(&file, offset, before)?;
+
+        let mut lines_after = Vec::new();
+        for _ in 0..after {
+            let mut line = String::new();
+            if reader.read_line(&mut line)? == 0 {
+                break;
+            }
+            lines_after.push(line.trim_end().to_string());
+        }
+
+        Ok(Some(Self {
+            before: lines_before,
+            line: target_line.trim_end().to_string(),
+            after: lines_after,
+        }))
+    }
 }
 
 fn read_lines_before(
@@ -47,6 +52,9 @@ fn read_lines_before(
     offset: u64,
     before: usize,
 ) -> std::io::Result<Vec<String>> {
+    if before == 0 {
+        return Ok(Vec::new());
+    }
     let mut result = Vec::new();
     let mut cursor = file.try_clone()?;
     let mut pos = offset;
