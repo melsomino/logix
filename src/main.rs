@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(
-    name = "logix",
+    name = "qx",
     about = "Log indexer and searcher",
     long_about = None,
     disable_help_flag = true,
