@@ -178,10 +178,9 @@ pub fn check_index(log_path: PathBuf, force_reindex: bool) -> anyhow::Result<()>
         }
         line_offset += len;
     }
-    println!();
-    print!("Writing index...");
+    print!("\rWriting index...\x1b[K");
     let ix_file = File::create(ix_path)?;
     ix_builder.write(&mut BufWriter::new(ix_file))?;
-    println!();
+    print!("\r\x1b[K");
     Ok(())
 }
